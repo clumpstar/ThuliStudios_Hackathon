@@ -35,56 +35,56 @@ export default function StyleQuizScreen() {
   const [isFinished, setIsFinished] = useState(false);
 
   const fetchQuizData = async () => {
-      console.info('Starting fetchQuizData', { authLoading });
-      if (authLoading) return;
+    console.info('Starting fetchQuizData', { authLoading });
+    if (authLoading) return;
 
-      try {
-        if (!session || !session.user || !session.user.id) {
-          console.error('No valid session or user ID', { session });
-          setError('Please log in to access the style quiz.');
-          setLoading(false);
-          return;
-        }
-
-        // Verify user exists in users table
-        console.info('Verifying user in Supabase', { userId: session.user.id });
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        if (userError || !user) {
-          console.error('User verification failed:', userError?.message || 'No user found');
-          await supabase.auth.signOut();
-          router.replace('/auth');
-          return;
-        }
-        console.info('User verified successfully');
-
-        console.info('Fetching refine quiz images');
-        const response = await fetch('http://192.168.0.4:8000/api/quiz/refine', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        console.info('Fetch response received', { status: response.status });
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        const data = await response.json();
-        console.info('Data received', { dataLength: data.length });
-        const formattedCards = data.map((item: any) => ({
-          id: item.id,
-          name: item.name || 'Unnamed Item',
-          uri: item.uri || 'https://placehold.co/400x600',
-          metadata: item.metadata || {},
-        }));
-        setQuizCards(formattedCards);
-      } catch (e: any) {
-        console.error('Error in fetchQuizData:', e.message, { stack: e.stack });
-        setError(e.message || 'An unknown error occurred.');
-      } finally {
-        console.info('Finally block executed, setting loading to false');
+    try {
+      if (!session || !session.user || !session.user.id) {
+        console.error('No valid session or user ID', { session });
+        setError('Please log in to access the style quiz.');
         setLoading(false);
+        return;
       }
-    };
+
+      // Verify user exists in users table
+      console.info('Verifying user in Supabase', { userId: session.user.id });
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (userError || !user) {
+        console.error('User verification failed:', userError?.message || 'No user found');
+        await supabase.auth.signOut();
+        router.replace('/auth');
+        return;
+      }
+      console.info('User verified successfully');
+
+      console.info('Fetching refine quiz images');
+      const response = await fetch('http://192.168.0.4:8000/api/quiz/refine', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.info('Fetch response received', { status: response.status });
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      const data = await response.json();
+      console.info('Data received', { dataLength: data.length });
+      const formattedCards = data.map((item: any) => ({
+        id: item.id,
+        name: item.name || 'Unnamed Item',
+        uri: item.uri || 'https://placehold.co/400x600',
+        metadata: item.metadata || {},
+      }));
+      setQuizCards(formattedCards);
+    } catch (e: any) {
+      console.error('Error in fetchQuizData:', e.message, { stack: e.stack });
+      setError(e.message || 'An unknown error occurred.');
+    } finally {
+      console.info('Finally block executed, setting loading to false');
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchQuizData();
@@ -231,7 +231,7 @@ export default function StyleQuizScreen() {
 
   return (
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <View style={styles.header}>
+      <View style={[styles.header, isDark && styles.headerDark]}>
         <View style={styles.headerLogoContainer}>
           <Ionicons name="shirt-outline" size={28} color={isDark ? '#fff' : '#000'} />
           <Text style={[styles.headerTitle, isDark && styles.textDark]}>DressUp</Text>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   headerDark: { backgroundColor: '#121212', borderBottomColor: '#272729' },
   headerLogoContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#000000' }, // Added default color
   content: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   swiperContainer: { height: 500, width: '100%' },
   title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', paddingHorizontal: 20, color: '#000000' },

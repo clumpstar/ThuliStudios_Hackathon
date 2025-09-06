@@ -2,10 +2,17 @@ import json
 import pandas as pd
 import os
 import sys
-# Add the parent directory to the path to allow imports from `services`
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import requests
+from PIL import Image
+from tqdm import tqdm
+import faiss
+import numpy as np
+import cv2
+import pickle
+import random
 
-# Try to import sentence_transformers and handle the DLL error
+# Add parent directory to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 try:
     from sentence_transformers import SentenceTransformer
 except ImportError as e:
@@ -17,18 +24,6 @@ except ImportError as e:
         sys.exit(1)
     else:
         raise e
-from PIL import Image
-from tqdm import tqdm
-import faiss
-import numpy as np
-import cv2
-import os
-import pickle
-import random
-import sys
-
-# Add the parent directory to the path to allow imports from `services`
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from services.supabase_client import supabase
 
 # --- CONFIGURATION ---
@@ -46,9 +41,10 @@ REFINE_QUIZ_SIZE = 20
 
 INITIAL_QUIZ_BUCKET = "initial_quiz_images"
 REFINE_QUIZ_BUCKET = "quiz_images"
-QUIZ_POOL_BUCKET = "quiz_pool_images"  # New bucket for all 2000 images
+QUIZ_POOL_BUCKET = "quiz_pool_images"
+EMBEDDING_BUCKET = "embedding_bucket"
+EMBEDDING_TABLE = "embedding_pool_img"
 
-# Color mapping for RGB to human-readable color names
 COLOR_MAP = {
     (255, 0, 0): "red",
     (0, 255, 0): "green",
@@ -65,7 +61,6 @@ COLOR_MAP = {
 }
 
 def detect_dominant_color(image_path: str) -> str:
-    """Detect the dominant color in an image using OpenCV and k-means clustering."""
     try:
         img = cv2.imread(image_path)
         if img is None:
@@ -88,7 +83,7 @@ def detect_dominant_color(image_path: str) -> str:
         return "unknown"
 
 def map_attributes_to_schema(categories: set, attributes: set) -> dict:
-    schema = { "primary_color": "unknown", "fit": "regular", "pattern": "solid", "type": "unknown" }
+    schema = {"primary_color": "unknown", "fit": "regular", "pattern": "solid", "type": "unknown", "brand": "Unknown Brand", "price": 0.0}
     type_map = {"shirt": "shirt", "dress": "dress", "top": "shirt", "pants": "pant", "jeans": "pant", "jacket": "jacket"}
     for cat in categories:
         if cat in type_map:
@@ -126,7 +121,7 @@ def load_and_preprocess_data():
         data['structured_metadata'] = structured_attrs
         structured_metadata.append(data)
     
-    random.shuffle(structured_metadata)  # Shuffle for randomness
+    random.shuffle(structured_metadata)
     return structured_metadata
 
 def upload_to_supabase(bucket_name: str, table_name: str, items: list):
@@ -193,16 +188,22 @@ def build_embedding_store(items: list):
     all_embeddings, all_metadata = [], []
 
     for item in tqdm(items, desc="Generating embeddings"):
-        if not os.path.exists(item['path']):
-            tqdm.write(f"Image not found: {item['path']}")
-            continue
+        bucket_file_path = f"{item['id']}.jpg"
+        public_url = supabase.storage.from_(EMBEDDING_BUCKET).get_public_url(bucket_file_path)
+        item['path'] = public_url
         try:
-            image = Image.open(item['path']).convert("RGB")
+            response = requests.get(public_url, stream=True, timeout=10)
+            if response.status_code != 200:
+                tqdm.write(f"Failed to fetch image {item['id']} from {public_url}: Status {response.status_code}")
+                continue
+            image = Image.open(response.raw).convert("RGB")
             embedding = model.encode([image])[0]
             all_embeddings.append(embedding)
             all_metadata.append(item)
+            tqdm.write(f"Successfully processed image {item['id']}")
         except Exception as e:
             tqdm.write(f"Skipping image {item['id']} due to error: {e}")
+            continue
     
     if not all_embeddings:
         print("No embeddings generated. Exiting.")
@@ -223,23 +224,15 @@ def main():
     print("--- Starting Full Data Pipeline ---")
     all_data = load_and_preprocess_data()
     
-    # 1. Split the data
     quiz_pool = all_data[:QUIZ_POOL_SIZE]
     embedding_pool = all_data[QUIZ_POOL_SIZE:6001]
     print(f"Data split: {len(quiz_pool)} for quizzes, {len(embedding_pool)} for recommendations.")
 
-    # 2. Populate Initial Quiz
-    # initial_quiz_items = quiz_pool[:INITIAL_QUIZ_SIZE]
-    # upload_to_supabase(INITIAL_QUIZ_BUCKET, "initial_quiz_img", initial_quiz_items)
-
-    # # 3. Populate Refine Quiz with first 20 items
-    # refine_quiz_items = quiz_pool[INITIAL_QUIZ_SIZE: INITIAL_QUIZ_SIZE + REFINE_QUIZ_SIZE]
-    # upload_to_supabase(REFINE_QUIZ_BUCKET, "refine_quiz_img", refine_quiz_items)
-
-    # # 4. Populate Quiz Pool Bucket with all 2000 images
+    # upload_to_supabase(INITIAL_QUIZ_BUCKET, "initial_quiz_img", quiz_pool[:INITIAL_QUIZ_SIZE])
+    # upload_to_supabase(REFINE_QUIZ_BUCKET, "refine_quiz_img", quiz_pool[INITIAL_QUIZ_SIZE:INITIAL_QUIZ_SIZE + REFINE_QUIZ_SIZE])
     # upload_to_supabase(QUIZ_POOL_BUCKET, "quiz_pool_img", quiz_pool)
+    # upload_to_supabase(EMBEDDING_BUCKET, EMBEDDING_TABLE, embedding_pool)
 
-    # 5. Build Embedding Store
     build_embedding_store(embedding_pool)
 
     print("--- Full Data Pipeline Finished Successfully ---")

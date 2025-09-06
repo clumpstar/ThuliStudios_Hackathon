@@ -8,12 +8,41 @@ import pickle
 from sentence_transformers import SentenceTransformer
 import random
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 # --- LOAD THE LOCAL EMBEDDING STORE ON STARTUP ---
 INDEX_FILE = "services/embedding_store/inventory.index"
 METADATA_FILE = "services/embedding_store/inventory_metadata.pkl"
+index = None
+model = None
+metadata = []
+
+
+def initialize_engine() -> None:
+    """Initialize the recommendation engine with retry logic."""
+    global index, model, metadata
+    if index and model and metadata:
+        return
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            index = faiss.read_index(INDEX_FILE)
+            with open(METADATA_FILE, 'rb') as f:
+                metadata = pickle.load(f)
+            model = SentenceTransformer('clip-ViT-B-32')
+            logger.info("Recommendation engine loaded successfully.")
+            return
+        except FileNotFoundError as e:
+            logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                logger.error("Failed to load embedding store after max retries.")
+                raise
+            time.sleep(2)  # Wait before retrying
+        except Exception as e:
+            logger.error(f"Unexpected error loading engine: {str(e)}")
+            raise
 
 print("Loading recommendation engine components...")
 try:
@@ -138,35 +167,69 @@ def save_initial_quiz_submission(user_id: str, swipes: List[Dict[str, Any]], sup
         raise Exception(f"Failed to save quiz submission: {str(e)}")
 
 def generate_recommendations(user_id: str) -> List[Recommendation]:
-    if not index or not model: raise Exception("Engine not loaded.")
+    """Generates personalized recommendations based on user taste profile."""
+    initialize_engine()
+    if not index or not model:
+        raise Exception("Recommendation engine not loaded.")
+
+    # Fetch user profile
     response = supabase.table("profiles").select("style_preferences").eq("id", user_id).single().execute()
     user_profile = response.data
     if not user_profile or not user_profile.get("style_preferences"):
-        results = [metadata[i] for i in range(10)]
-        return [Recommendation(id=res['id'], name=res['id'], image=res['path']) for res in results]
-    
+        logger.warning(f"No style preferences found for user {user_id}, using default recommendations")
+        # Fetch default recommendations from embedding_pool_img table
+        results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+        return [Recommendation(
+            id=res['name'],
+            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+            image=res['image_url'],
+            fit=res['metadata'].get('fit', 'regular'),
+            primary_color=res['metadata'].get('primary_color', 'unknown'),
+            brand='Unknown Brand',  # Add brand to table if needed
+            price=float(res['metadata'].get('price', 0.0))
+        ) for res in results]
+
     liked_swipes = [s for s in user_profile["style_preferences"] if s.get("swipe") == 1]
     if not liked_swipes:
-        results = [metadata[i] for i in range(10)]
-        return [Recommendation(id=res['id'], name=res['id'], image=res['path']) for res in results]
-        
+        logger.warning(f"No liked swipes found for user {user_id}, using default recommendations")
+        results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+        return [Recommendation(
+            id=res['name'],
+            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+            image=res['image_url'],
+            fit=res['metadata'].get('fit', 'regular'),
+            primary_color=res['metadata'].get('primary_color', 'unknown'),
+            brand='Unknown Brand',
+            price=float(res['metadata'].get('price', 0.0))
+        ) for res in results]
+
+    # Generate taste profile embedding
     liked_texts = [f"{s['metadata']['primary_color']} {s['metadata']['pattern']} {s['metadata']['fit']}" for s in liked_swipes]
     taste_embeddings = model.encode(liked_texts)
     avg_vector = np.mean(taste_embeddings, axis=0).astype('float32').reshape(1, -1)
-    
+
+    # Perform similarity search
     k = 10
     distances, indices = index.search(avg_vector, k)
     recommendations = []
     for i in indices[0]:
-        item_meta = metadata[i]
-        structured_meta = item_meta.get('structured_metadata', {})
+        item_meta = metadata[i]  # From inventory_metadata.pkl
+        # Fetch metadata from Supabase for consistency
+        response = supabase.table("embedding_pool_img").select("name, image_url, metadata").eq("name", item_meta['id']).single().execute()
+        if not response.data:
+            logger.warning(f"No Supabase record found for item {item_meta['id']}")
+            continue
+        res = response.data
         recommendations.append(Recommendation(
-            id=item_meta['id'],
-            name=f"{structured_meta.get('primary_color', 'Item')} {structured_meta.get('type', '')}",
-            image=item_meta.get('path'),
-            fit=structured_meta.get('fit', 'regular'),
-            primary_color=structured_meta.get('primary_color', 'unknown')
+            id=res['name'],
+            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+            image=res['image_url'],
+            fit=res['metadata'].get('fit', 'regular'),
+            primary_color=res['metadata'].get('primary_color', 'unknown'),
+            brand='Unknown Brand',
+            price=float(res['metadata'].get('price', 0.0))
         ))
+    logger.info(f"Generated {len(recommendations)} recommendations for user {user_id}")
     return recommendations
 
 def refine_taste_profile(user_id: str, new_swipes: List[Swipe]) -> bool:

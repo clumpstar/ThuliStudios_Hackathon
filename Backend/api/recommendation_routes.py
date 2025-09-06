@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# --- UPDATED: This is now a POST request to accept the user_id ---
 @router.post("/recommendations", response_model=list[Recommendation])
 def get_recommendations_route(request: UserRequest):
     """
@@ -16,9 +15,12 @@ def get_recommendations_route(request: UserRequest):
     taste profile, which is compared against the local embedding store.
     """
     try:
+        logger.info(f"Generating recommendations for user_id: {request.user_id}")
         recommendations = recommendation_service.generate_recommendations(request.user_id)
+        logger.info(f"Successfully generated {len(recommendations)} recommendations")
         return recommendations
     except Exception as e:
+        logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
