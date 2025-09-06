@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+supabase
+requests
+Pillow
+tqdm
+faiss-cpu
+sentence-transformers
+opencv-python
+tf-keras
+pandas
