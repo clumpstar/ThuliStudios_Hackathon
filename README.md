@@ -89,25 +89,25 @@ ThuliApp is a mobile application that provides personalized style recommendation
 
 1. **Account SignUp** 🚀
 
-    ![UserSignup.gif](UserSignup-ezgif.com-video-to-gif-converter.gif)
+    ![UserSignup.gif](gifs/UserSignup-ezgif.com-video-to-gif-converter.gif)
 ---
 2. **Initial Quiz** 📝 (Is active only at the first signIn for intial curation)
 
-    ![initialQuiz.gif](initialQuiz-ezgif.com-video-to-gif-converter.gif)
+    ![initialQuiz.gif](gifs/initialQuiz-ezgif.com-video-to-gif-converter.gif)
 ---
 3. **Account Already Existing Scenario** ⚠️
 
-    ![AccountExists.gif](AccountExists-ezgif.com-video-to-gif-converter.gif)
+    ![AccountExists.gif](gifs/AccountExists-ezgif.com-video-to-gif-converter.gif)
 ---
 4. **Home Screen (aka Recommendation Viewer)** 🏠
 
-    ![HomeScreen.gif](HomeScreen-ezgif.com-video-to-gif-converter.gif)
+    ![HomeScreen.gif](gifs/HomeScreen-ezgif.com-video-to-gif-converter.gif)
 ---
 5. **Refinement Quiz (aka Style Quiz)** 💅
 
-    ![refineQuiz.gif](refineQuiz-ezgif.com-video-to-gif-converter.gif)
+    ![refineQuiz.gif](gifs/refineQuiz-ezgif.com-video-to-gif-converter.gif)
 ---
 6. **Dark/Light Mode (in settings page)** 🌗
 
-    ![alt text](darkMode-ezgif.com-video-to-gif-converter.gif)
+    ![alt text](gifs/darkMode-ezgif.com-video-to-gif-converter.gif)
 ---
