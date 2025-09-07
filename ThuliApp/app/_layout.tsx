@@ -63,7 +63,7 @@ function RootLayoutContent() {
           router.replace('/(tabs)');
         }
       } catch (error) {
-        console.error('Error checking auth/profile:', error);
+        // console.error('Error checking auth/profile:', error);
         if (segments[0] !== 'auth') {
           router.replace('/auth');
         }

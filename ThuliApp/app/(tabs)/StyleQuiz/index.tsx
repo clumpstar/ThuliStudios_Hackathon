@@ -40,7 +40,7 @@ export default function StyleQuizScreen() {
 
     try {
       if (!session || !session.user || !session.user.id) {
-        console.error('No valid session or user ID', { session });
+        // console.error('No valid session or user ID', { session });
         setError('Please log in to access the style quiz.');
         setLoading(false);
         return;
@@ -231,12 +231,12 @@ export default function StyleQuizScreen() {
 
   return (
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <View style={[styles.header, isDark && styles.headerDark]}>
+      {/* <View style={[styles.header, isDark && styles.headerDark]}>
         <View style={styles.headerLogoContainer}>
           <Ionicons name="shirt-outline" size={28} color={isDark ? '#fff' : '#000'} />
           <Text style={[styles.headerTitle, isDark && styles.textDark]}>DressUp</Text>
         </View>
-      </View>
+      </View> */}
       <View style={styles.content}>
         <Text style={[styles.title, isDark && styles.textDark]}>Refine Your Style</Text>
         <Text style={[styles.subtitle, isDark && styles.textDarkMuted]}>Let us know what you're feeling now.</Text>

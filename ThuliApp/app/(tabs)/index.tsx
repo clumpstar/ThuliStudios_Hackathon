@@ -4,22 +4,81 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { TapGestureHandler, State } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Card component for a single recommendation
-const RecommendationCard = ({ item, isDark }: { item: any, isDark: boolean }) => (
-  <View style={[styles.card, isDark && styles.cardDark]}>
-    <Image source={{ uri: item.image }} style={styles.cardImage} />
-    <View style={styles.cardContent}>
-      <Text style={[styles.cardBrand, isDark && styles.textDarkMuted]}>{item.brand || 'Unknown Brand'}</Text>
-      <Text style={[styles.cardName, isDark && styles.textDark]}>{item.name}</Text>
-      <View style={styles.metadataContainer}>
-        <Text style={[styles.metadataText, isDark && styles.textDarkMuted]}>{item.fit || 'Regular'} Fit</Text>
-        <Text style={[styles.metadataText, isDark && styles.textDarkMuted]}>{item.primary_color || 'Unknown'}</Text>
-      </View>
-      <Text style={[styles.cardPrice, isDark && styles.textDark]}>${(item.price || 0).toFixed(2)}</Text>
-    </View>
-  </View>
-);
+const RecommendationCard = ({ item, isDark }: { item: any, isDark: boolean }) => {
+  const [isLiked, setIsLiked] = useState(false);
+  const [isDisliked, setIsDisliked] = useState(false);
+
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    if (isDisliked) setIsDisliked(false); // Deselect dislike if liked
+  };
+
+  const handleDislike = () => {
+    setIsDisliked(!isDisliked);
+    if (isLiked) setIsLiked(false); // Deselect like if disliked
+  };
+
+  const onDoubleTap = (event: any) => {
+    if (event.nativeEvent.state === State.ACTIVE) {
+      handleLike();
+    }
+  };
+
+  const onTripleTap = (event: any) => {
+    if (event.nativeEvent.state === State.ACTIVE) {
+      handleDislike();
+    }
+  };
+
+  return (
+    <TapGestureHandler
+      onHandlerStateChange={onTripleTap}
+      numberOfTaps={3}
+      maxDelayMs={500}
+    >
+      <TapGestureHandler
+        onHandlerStateChange={onDoubleTap}
+        numberOfTaps={2}
+        maxDelayMs={300}
+      >
+        <View style={[styles.card, isDark && styles.cardDark]}>
+          <View style={styles.cardHeader}>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity onPress={handleLike} style={styles.iconButton}>
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={24}
+                  color={isLiked ? '#E5566D' : isDark ? '#A9A9A9' : 'gray'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDislike} style={styles.iconButton}>
+                <Ionicons
+                  name={isDisliked ? 'heart-dislike' : 'heart-dislike-outline'}
+                  size={24}
+                  color={isDisliked ? '#E5566D' : isDark ? '#A9A9A9' : 'gray'}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Image source={{ uri: item.image }} style={styles.cardImage} />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardBrand, isDark && styles.textDarkMuted]}>{item.brand || 'Unknown Brand'}</Text>
+            <Text style={[styles.cardName, isDark && styles.textDark]}>{item.name}</Text>
+            <View style={styles.metadataContainer}>
+              <Text style={[styles.metadataText, isDark && styles.textDarkMuted]}>{item.fit || 'Regular'} Fit</Text>
+              <Text style={[styles.metadataText, isDark && styles.textDarkMuted]}>{item.primary_color || 'Unknown'}</Text>
+            </View>
+            <Text style={[styles.cardPrice, isDark && styles.textDark]}>${(item.price || 0).toFixed(2)}</Text>
+          </View>
+        </View>
+      </TapGestureHandler>
+    </TapGestureHandler>
+  );
+};
 
 export default function HomeScreen() {
   const { theme, session } = useAuth();
@@ -87,25 +146,27 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
-      <View style={[styles.header, isDark && styles.headerDark]}>
-        <View style={styles.headerLogoContainer}>
-          <Ionicons name="shirt-outline" size={28} color={isDark ? '#fff' : '#000'} />
-          <Text style={[styles.headerTitle, isDark && styles.textDark]}>DressUp</Text>
-        </View>
-      </View>
+    <GestureHandlerRootView style={[styles.container, isDark && styles.containerDark]}>
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* <View style={[styles.header, isDark && styles.headerDark]}>
+          <View style={styles.headerLogoContainer}>
+            <Ionicons name="shirt-outline" size={28} color={isDark ? '#fff' : '#000'} />
+            <Text style={[styles.headerTitle, isDark && styles.textDark]}>DressUp</Text>
+          </View>
+        </View> */}
 
-      <FlatList
-        data={recommendations}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <RecommendationCard item={item} isDark={isDark} />}
-        contentContainerStyle={styles.listContainer}
-        ListHeaderComponent={() => <Text style={[styles.listTitle, isDark && styles.textDark]}>For You</Text>}
-        ListEmptyComponent={() => (
-          <Text style={[styles.listTitle, isDark && styles.textDark]}>No recommendations available.</Text>
-        )}
-      />
-    </SafeAreaView>
+        <FlatList
+          data={recommendations}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => <RecommendationCard item={item} isDark={isDark} />}
+          contentContainerStyle={styles.listContainer}
+          ListHeaderComponent={() => <Text style={[styles.listTitle, isDark && styles.textDark]}>For You</Text>}
+          ListEmptyComponent={() => (
+            <Text style={[styles.listTitle, isDark && styles.textDark]}>No recommendations available.</Text>
+          )}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -146,6 +207,21 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   cardDark: { backgroundColor: '#1C1C1E' },
+  cardHeader: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    padding: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+  },
   cardImage: { width: '100%', height: 400, borderTopLeftRadius: 15, borderTopRightRadius: 15 },
   cardContent: { padding: 15 },
   cardBrand: { color: 'gray', fontSize: 14, marginBottom: 5 },

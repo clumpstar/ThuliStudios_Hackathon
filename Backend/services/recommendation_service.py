@@ -166,6 +166,23 @@ def save_initial_quiz_submission(user_id: str, swipes: List[Dict[str, Any]], sup
         print(f"Error saving initial quiz submission: {str(e)}")
         raise Exception(f"Failed to save quiz submission: {str(e)}")
 
+SURREAL_COLORS = ['Quantum Teal', 'Glimmering Void', 'Nebula Blush', 'Cosmic Saffron', 'Ethereal Mist']
+SURREAL_FITS = ['Astral Flow', 'Dreamweave', 'Stardust Slim', 'Galactic Drape', 'Nebulous Comfort']
+SURREAL_BRANDS = ['Starforge Threads', 'Lunar Loom', 'Astro Atelier', 'Cosmo Couture', 'Void Vogue']
+SURREAL_PRICES = [42.42, 88.88, 111.11, 333.33, 777.77]
+
+def get_surreal_value(field: str, default: str | float) -> str | float:
+    """Returns a surreal random value for missing metadata fields."""
+    if field == 'primary_color':
+        return random.choice(SURREAL_COLORS) if default in ['unknown', 'Item'] else default
+    elif field == 'fit':
+        return random.choice(SURREAL_FITS) if default == 'regular' else default
+    elif field == 'brand':
+        return random.choice(SURREAL_BRANDS) if default == 'Unknown Brand' else default
+    elif field == 'price':
+        return random.choice(SURREAL_PRICES) if default == 0.0 else default
+    return default
+
 def generate_recommendations(user_id: str) -> List[Recommendation]:
     """Generates personalized recommendations based on user taste profile."""
     try:
@@ -182,12 +199,12 @@ def generate_recommendations(user_id: str) -> List[Recommendation]:
             results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
             return [Recommendation(
                 id=res['name'],
-                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                name=f"{get_surreal_value('primary_color', res['metadata'].get('primary_color', 'Item'))} {res['metadata'].get('type', '')}",
                 image=res['image_url'],
-                fit=res['metadata'].get('fit', 'regular'),
-                primary_color=res['metadata'].get('primary_color', 'unknown'),
-                brand=res['metadata'].get('brand', 'Unknown Brand'),
-                price=float(res['metadata'].get('price', 0.0))
+                fit=get_surreal_value('fit', res['metadata'].get('fit', 'regular')),
+                primary_color=get_surreal_value('primary_color', res['metadata'].get('primary_color', 'unknown')),
+                brand=get_surreal_value('brand', res['metadata'].get('brand', 'Unknown Brand')),
+                price=float(get_surreal_value('price', res['metadata'].get('price', 0.0)))
             ) for res in results]
 
         style_preferences = user_profile["style_preferences"]
@@ -201,12 +218,12 @@ def generate_recommendations(user_id: str) -> List[Recommendation]:
                 results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
                 return [Recommendation(
                     id=res['name'],
-                    name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                    name=f"{get_surreal_value('primary_color', res['metadata'].get('primary_color', 'Item'))} {res['metadata'].get('type', '')}",
                     image=res['image_url'],
-                    fit=res['metadata'].get('fit', 'regular'),
-                    primary_color=res['metadata'].get('primary_color', 'unknown'),
-                    brand=res['metadata'].get('brand', 'Unknown Brand'),
-                    price=float(res['metadata'].get('price', 0.0))
+                    fit=get_surreal_value('fit', res['metadata'].get('fit', 'regular')),
+                    primary_color=get_surreal_value('primary_color', res['metadata'].get('primary_color', 'unknown')),
+                    brand=get_surreal_value('brand', res['metadata'].get('brand', 'Unknown Brand')),
+                    price=float(get_surreal_value('price', res['metadata'].get('price', 0.0)))
                 ) for res in results]
             liked_texts = [
                 f"{s['metadata'].get('primary_color', 'unknown')} {s['metadata'].get('pattern', 'solid')} {s['metadata'].get('fit', 'regular')}"
@@ -227,12 +244,12 @@ def generate_recommendations(user_id: str) -> List[Recommendation]:
                 results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
                 return [Recommendation(
                     id=res['name'],
-                    name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                    name=f"{get_surreal_value('primary_color', res['metadata'].get('primary_color', 'Item'))} {res['metadata'].get('type', '')}",
                     image=res['image_url'],
-                    fit=res['metadata'].get('fit', 'regular'),
-                    primary_color=res['metadata'].get('primary_color', 'unknown'),
-                    brand=res['metadata'].get('brand', 'Unknown Brand'),
-                    price=float(res['metadata'].get('price', 0.0))
+                    fit=get_surreal_value('fit', res['metadata'].get('fit', 'regular')),
+                    primary_color=get_surreal_value('primary_color', res['metadata'].get('primary_color', 'unknown')),
+                    brand=get_surreal_value('brand', res['metadata'].get('brand', 'Unknown Brand')),
+                    price=float(get_surreal_value('price', res['metadata'].get('price', 0.0)))
                 ) for res in results]
         else:
             logger.error(f"Invalid style_preferences format for user {user_id}: {type(style_preferences)}")
@@ -244,12 +261,12 @@ def generate_recommendations(user_id: str) -> List[Recommendation]:
             results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
             return [Recommendation(
                 id=res['name'],
-                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                name=f"{get_surreal_value('primary_color', res['metadata'].get('primary_color', 'Item'))} {res['metadata'].get('type', '')}",
                 image=res['image_url'],
-                fit=res['metadata'].get('fit', 'regular'),
-                primary_color=res['metadata'].get('primary_color', 'unknown'),
-                brand=res['metadata'].get('brand', 'Unknown Brand'),
-                price=float(res['metadata'].get('price', 0.0))
+                fit=get_surreal_value('fit', res['metadata'].get('fit', 'regular')),
+                primary_color=get_surreal_value('primary_color', res['metadata'].get('primary_color', 'unknown')),
+                brand=get_surreal_value('brand', res['metadata'].get('brand', 'Unknown Brand')),
+                price=float(get_surreal_value('price', res['metadata'].get('price', 0.0)))
             ) for res in results]
 
         taste_embeddings = model.encode(liked_texts)
@@ -271,12 +288,12 @@ def generate_recommendations(user_id: str) -> List[Recommendation]:
             res = response.data
             recommendations.append(Recommendation(
                 id=res['name'],
-                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                name=f"{get_surreal_value('primary_color', res['metadata'].get('primary_color', 'Item'))} {res['metadata'].get('type', '')}",
                 image=res['image_url'],
-                fit=res['metadata'].get('fit', 'regular'),
-                primary_color=res['metadata'].get('primary_color', 'unknown'),
-                brand=res['metadata'].get('brand', 'Unknown Brand'),
-                price=float(res['metadata'].get('price', 0.0))
+                fit=get_surreal_value('fit', res['metadata'].get('fit', 'regular')),
+                primary_color=get_surreal_value('primary_color', res['metadata'].get('primary_color', 'unknown')),
+                brand=get_surreal_value('brand', res['metadata'].get('brand', 'Unknown Brand')),
+                price=float(get_surreal_value('price', res['metadata'].get('price', 0.0)))
             ))
         logger.info(f"Generated {len(recommendations)} recommendations for user {user_id}")
         return recommendations

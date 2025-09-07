@@ -3,6 +3,7 @@ import { View, TextInput, Text, StyleSheet, Alert, TouchableOpacity } from 'reac
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateInputs = () => {
     const trimmedEmail = email.trim();
@@ -137,25 +140,49 @@ export default function AuthScreen() {
         keyboardType="email-address"
       />
 
-      <TextInput
-        style={[styles.input, { backgroundColor: theme === 'light' ? 'white' : '#222', borderColor: theme === 'light' ? '#ccc' : '#444', color: theme === 'light' ? '#000' : '#FFF' }]}
-        placeholder="Password"
-        placeholderTextColor={theme === 'light' ? '#999' : '#777'}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={[styles.input, styles.passwordInput, { backgroundColor: theme === 'light' ? 'white' : '#222', borderColor: theme === 'light' ? '#ccc' : '#444', color: theme === 'light' ? '#000' : '#FFF' }]}
+          placeholder="Password"
+          placeholderTextColor={theme === 'light' ? '#999' : '#777'}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity
+          style={styles.eyeIcon}
+          onPress={() => setShowPassword(!showPassword)}
+        >
+          <Icon
+            name={showPassword ? 'eye-off' : 'eye'}
+            size={24}
+            color={theme === 'light' ? '#999' : '#777'}
+          />
+        </TouchableOpacity>
+      </View>
 
       {isSignUp && (
         <>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme === 'light' ? 'white' : '#222', borderColor: theme === 'light' ? '#ccc' : '#444', color: theme === 'light' ? '#000' : '#FFF' }]}
-            placeholder="Confirm Password"
-            placeholderTextColor={theme === 'light' ? '#999' : '#777'}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, styles.passwordInput, { backgroundColor: theme === 'light' ? 'white' : '#222', borderColor: theme === 'light' ? '#ccc' : '#444', color: theme === 'light' ? '#000' : '#FFF' }]}
+              placeholder="Confirm Password"
+              placeholderTextColor={theme === 'light' ? '#999' : '#777'}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <Icon
+                name={showConfirmPassword ? 'eye-off' : 'eye'}
+                size={24}
+                color={theme === 'light' ? '#999' : '#777'}
+              />
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.passwordHint, { color: theme === 'light' ? 'gray' : '#AAA' }]}>Use 8+ characters with a mix of letters, numbers & symbols.</Text>
         </>
       )}
@@ -189,11 +216,22 @@ const styles = StyleSheet.create({
   dark: { backgroundColor: '#111' },
   title: { fontSize: 24, marginBottom: 10, textAlign: 'center', fontWeight: 'bold' },
   subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 20 },
+  inputContainer: { position: 'relative', width: '100%' },
   input: {
     borderWidth: 1,
     padding: 15,
     marginVertical: 10,
     borderRadius: 15,
+    width: '100%',
+  },
+  passwordInput: {
+    paddingRight: 50, // Make space for the eye icon
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+    transform: [{ translateY: -12 }], // Center vertically
   },
   passwordHint: {
     fontSize: 12,
