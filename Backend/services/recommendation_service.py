@@ -168,69 +168,121 @@ def save_initial_quiz_submission(user_id: str, swipes: List[Dict[str, Any]], sup
 
 def generate_recommendations(user_id: str) -> List[Recommendation]:
     """Generates personalized recommendations based on user taste profile."""
-    initialize_engine()
-    if not index or not model:
-        raise Exception("Recommendation engine not loaded.")
+    try:
+        initialize_engine()
+        if not index or not model or not metadata:
+            logger.error("Recommendation engine not loaded")
+            raise Exception("Recommendation engine not loaded")
 
-    # Fetch user profile
-    response = supabase.table("profiles").select("style_preferences").eq("id", user_id).single().execute()
-    user_profile = response.data
-    if not user_profile or not user_profile.get("style_preferences"):
-        logger.warning(f"No style preferences found for user {user_id}, using default recommendations")
-        # Fetch default recommendations from embedding_pool_img table
-        results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
-        return [Recommendation(
-            id=res['name'],
-            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
-            image=res['image_url'],
-            fit=res['metadata'].get('fit', 'regular'),
-            primary_color=res['metadata'].get('primary_color', 'unknown'),
-            brand='Unknown Brand',  # Add brand to table if needed
-            price=float(res['metadata'].get('price', 0.0))
-        ) for res in results]
+        # Fetch user profile
+        response = supabase.table("profiles").select("style_preferences").eq("id", user_id).single().execute()
+        user_profile = response.data
+        if not user_profile or not user_profile.get("style_preferences"):
+            logger.warning(f"No style preferences found for user {user_id}, using default recommendations")
+            results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+            return [Recommendation(
+                id=res['name'],
+                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                image=res['image_url'],
+                fit=res['metadata'].get('fit', 'regular'),
+                primary_color=res['metadata'].get('primary_color', 'unknown'),
+                brand=res['metadata'].get('brand', 'Unknown Brand'),
+                price=float(res['metadata'].get('price', 0.0))
+            ) for res in results]
 
-    liked_swipes = [s for s in user_profile["style_preferences"] if s.get("swipe") == 1]
-    if not liked_swipes:
-        logger.warning(f"No liked swipes found for user {user_id}, using default recommendations")
-        results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
-        return [Recommendation(
-            id=res['name'],
-            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
-            image=res['image_url'],
-            fit=res['metadata'].get('fit', 'regular'),
-            primary_color=res['metadata'].get('primary_color', 'unknown'),
-            brand='Unknown Brand',
-            price=float(res['metadata'].get('price', 0.0))
-        ) for res in results]
+        style_preferences = user_profile["style_preferences"]
+        liked_texts = []
 
-    # Generate taste profile embedding
-    liked_texts = [f"{s['metadata']['primary_color']} {s['metadata']['pattern']} {s['metadata']['fit']}" for s in liked_swipes]
-    taste_embeddings = model.encode(liked_texts)
-    avg_vector = np.mean(taste_embeddings, axis=0).astype('float32').reshape(1, -1)
+        # Handle list of swipe dictionaries
+        if isinstance(style_preferences, list):
+            liked_swipes = [s for s in style_preferences if s.get("swipe") == 1]
+            if not liked_swipes:
+                logger.warning(f"No liked swipes found for user {user_id}, using default recommendations")
+                results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+                return [Recommendation(
+                    id=res['name'],
+                    name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                    image=res['image_url'],
+                    fit=res['metadata'].get('fit', 'regular'),
+                    primary_color=res['metadata'].get('primary_color', 'unknown'),
+                    brand=res['metadata'].get('brand', 'Unknown Brand'),
+                    price=float(res['metadata'].get('price', 0.0))
+                ) for res in results]
+            liked_texts = [
+                f"{s['metadata'].get('primary_color', 'unknown')} {s['metadata'].get('pattern', 'solid')} {s['metadata'].get('fit', 'regular')}"
+                for s in liked_swipes
+            ]
+        # Handle dictionary of attribute counts (backward compatibility)
+        elif isinstance(style_preferences, dict):
+            attrs = []
+            for attr in ['primary_color', 'pattern', 'fit']:
+                if attr in style_preferences and style_preferences[attr]:
+                    top_value = max(style_preferences[attr].items(), key=lambda x: x[1], default=(None, 0))[0]
+                    if top_value:
+                        attrs.append(top_value)
+            if attrs:
+                liked_texts = [" ".join(attrs)]
+            else:
+                logger.warning(f"No valid attributes found for user {user_id}, using default recommendations")
+                results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+                return [Recommendation(
+                    id=res['name'],
+                    name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                    image=res['image_url'],
+                    fit=res['metadata'].get('fit', 'regular'),
+                    primary_color=res['metadata'].get('primary_color', 'unknown'),
+                    brand=res['metadata'].get('brand', 'Unknown Brand'),
+                    price=float(res['metadata'].get('price', 0.0))
+                ) for res in results]
+        else:
+            logger.error(f"Invalid style_preferences format for user {user_id}: {type(style_preferences)}")
+            raise Exception("Invalid style_preferences format")
 
-    # Perform similarity search
-    k = 10
-    distances, indices = index.search(avg_vector, k)
-    recommendations = []
-    for i in indices[0]:
-        item_meta = metadata[i]  # From inventory_metadata.pkl
-        # Fetch metadata from Supabase for consistency
-        response = supabase.table("embedding_pool_img").select("name, image_url, metadata").eq("name", item_meta['id']).single().execute()
-        if not response.data:
-            logger.warning(f"No Supabase record found for item {item_meta['id']}")
-            continue
-        res = response.data
-        recommendations.append(Recommendation(
-            id=res['name'],
-            name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
-            image=res['image_url'],
-            fit=res['metadata'].get('fit', 'regular'),
-            primary_color=res['metadata'].get('primary_color', 'unknown'),
-            brand='Unknown Brand',
-            price=float(res['metadata'].get('price', 0.0))
-        ))
-    logger.info(f"Generated {len(recommendations)} recommendations for user {user_id}")
-    return recommendations
+        # Generate taste profile embedding
+        if not liked_texts:
+            logger.warning(f"No liked texts generated for user {user_id}, using default recommendations")
+            results = supabase.table("embedding_pool_img").select("name, image_url, metadata").limit(10).execute().data
+            return [Recommendation(
+                id=res['name'],
+                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                image=res['image_url'],
+                fit=res['metadata'].get('fit', 'regular'),
+                primary_color=res['metadata'].get('primary_color', 'unknown'),
+                brand=res['metadata'].get('brand', 'Unknown Brand'),
+                price=float(res['metadata'].get('price', 0.0))
+            ) for res in results]
+
+        taste_embeddings = model.encode(liked_texts)
+        avg_vector = np.mean(taste_embeddings, axis=0).astype('float32').reshape(1, -1)
+
+        # Perform similarity search
+        k = 10
+        distances, indices = index.search(avg_vector, k)
+        recommendations = []
+        for i in indices[0]:
+            if i >= len(metadata):
+                logger.warning(f"Index {i} out of bounds for metadata (length: {len(metadata)})")
+                continue
+            item_meta = metadata[i]
+            response = supabase.table("embedding_pool_img").select("name, image_url, metadata").eq("name", item_meta['id']).single().execute()
+            if not response.data:
+                logger.warning(f"No Supabase record found for item {item_meta['id']}")
+                continue
+            res = response.data
+            recommendations.append(Recommendation(
+                id=res['name'],
+                name=f"{res['metadata'].get('primary_color', 'Item')} {res['metadata'].get('type', '')}",
+                image=res['image_url'],
+                fit=res['metadata'].get('fit', 'regular'),
+                primary_color=res['metadata'].get('primary_color', 'unknown'),
+                brand=res['metadata'].get('brand', 'Unknown Brand'),
+                price=float(res['metadata'].get('price', 0.0))
+            ))
+        logger.info(f"Generated {len(recommendations)} recommendations for user {user_id}")
+        return recommendations
+    except Exception as e:
+        logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
+        raise
 
 def refine_taste_profile(user_id: str, new_swipes: List[Swipe]) -> bool:
     """
