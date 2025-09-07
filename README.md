@@ -69,6 +69,8 @@ ThuliApp is a mobile application that provides personalized style recommendation
 
 ## Important Details ℹ️
 
+*   **Dataset:** [iMaterialist (Fashion) 2020 at FGVC7](https://www.kaggle.com/competitions/imaterialist-fashion-2020-fgvc7/overview)
+*   **Data Pipeline:** `data_pipeline.py` has all the details regarding the dataset extraction and intial Database setup.
 *   **Database Configuration:** The project uses Supabase for database and bucket storage. The Supabase API keys are available in the Supabase dashboard. 🗄️
     The following tables are used:
     1.  `users` - For checking if the user has a valid account.
@@ -82,3 +84,30 @@ ThuliApp is a mobile application that provides personalized style recommendation
     2.  Needs web scraping methodology to enhance the liveliness of the content. 🚧
 
 *   **Authentication:** The project uses email/password authentication with email confirmation. 🔐
+
+## Demo ✨
+
+1. **Account SignUp** 🚀
+
+    ![UserSignup.gif](UserSignup-ezgif.com-video-to-gif-converter.gif)
+---
+2. **Initial Quiz** 📝 (Is active only at the first signIn for intial curation)
+
+    ![initialQuiz.gif](initialQuiz-ezgif.com-video-to-gif-converter.gif)
+---
+3. **Account Already Existing Scenario** ⚠️
+
+    ![AccountExists.gif](AccountExists-ezgif.com-video-to-gif-converter.gif)
+---
+4. **Home Screen (aka Recommendation Viewer)** 🏠
+
+    ![HomeScreen.gif](HomeScreen-ezgif.com-video-to-gif-converter.gif)
+---
+5. **Refinement Quiz (aka Style Quiz)** 💅
+
+    ![refineQuiz.gif](refineQuiz-ezgif.com-video-to-gif-converter.gif)
+---
+6. **Dark/Light Mode (in settings page)** 🌗
+
+    ![alt text](darkMode-ezgif.com-video-to-gif-converter.gif)
+---
